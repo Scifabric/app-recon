@@ -138,7 +138,7 @@ function draw(data, bounds) {
       .attr("transform", function(d) { return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")"; })
       .style("font-size", function(d) { return d.size + "px"; })
       .on("click", function(d) {
-        pickWord(d.text);
+        clickWord(d.text);
       })
       .style("opacity", 1e-6)
     .transition()
@@ -174,10 +174,18 @@ function allowedNames() {
   return filtered;
 }
 
-function pickWord(word) {
+function clickWord(word) {
+  var found = false;
+  $('.canonical-names li').each(function () {
+    if ($(this).text() === word) {
+      $(this).remove();
+      d3.select(d3.event.target).style("opacity", 1);
+      found = true;
+    }
+  })
+  if (found) { return; }
   $('.canonical-names').append('<li>' + word + '</li>');
-
-  drawCloud();
+  d3.select(d3.event.target).style("opacity", 0.1);
 }
 
 function drawCloud() {
@@ -218,11 +226,6 @@ var canonical = {
   id: null
 };
 var allNames = [];
-
-$('.canonical-names').on('click', 'li', function () {
-  $(this).remove();
-  drawCloud();
-});
 
 // Load the task data into the HTML skeleton
 function loadData (data) {
