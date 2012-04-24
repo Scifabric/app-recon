@@ -1,11 +1,1 @@
-*.egg-info
-.*.swp
-*.pyc
-*.db
-settings_local.py
-doc/_build
-env/
-# epio stuff
-epio.ini
-.epio-app
-.epioignore
+/backend_data

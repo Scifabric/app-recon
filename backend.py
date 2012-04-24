@@ -1,9 +1,11 @@
 import os
 import json
+import shelve
 from flask import Flask, Response
 from flask import g, abort, request, jsonify
 
 DEBUG = True
+DATAFILE = os.path.join(os.path.dirname(__file__), 'backend_data')
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -16,22 +18,17 @@ def jsonify(obj, *args, **kwargs):
 
 @app.before_request
 def before_request():
-    try:
-        g.data = json.load(open('data.json'))
-    except IOError:
-        g.data = {
-            'canonicals':{},
-            'canonicals_by_name':{},
-            'names': [],
-            'next_id': 1
-        }
-
-    print g.data['next_id']
+    g.data = shelve.open(DATAFILE, protocol=2)
+    g.canonicals =         g.data.get('canonicals', {})
+    g.canonicals_by_name = g.data.get('canonicals_by_name', {})
+    g.names =              g.data.get('names', [])
+    g.next_id =            g.data.get('next_id', 1)
 
 @app.teardown_request
 def teardown_request(response):
-    with open('data.json', 'w') as f:
-        json.dump(g.data, f)
+    for k in ['canonicals', 'canonicals_by_name', 'names', 'next_id']:
+        g.data[k] = getattr(g, k)
+    g.data.close()
 
 @app.after_request
 def after_request(response):
@@ -48,29 +45,31 @@ def after_request(response):
     return response
 
 def get_id():
-    ret = g.data['next_id']
-    g.data['next_id'] += 1
+    ret = g.next_id
+    g.next_id += 1
     return ret
 
 @app.route('/', methods=['GET'])
 def index():
-    return jsonify(g.data['canonicals'])
+    return jsonify(g.canonicals)
 
 @app.route('/canonical', methods=['GET'])
 def get_canonical():
     name = request.args['name']
 
-    if name not in g.data['canonicals_by_name']:
+    if name not in g.canonicals_by_name:
         id_ = get_id()
-        g.data['canonicals'][id_] = {'id': id_, 'names': [name], 'name': name}
-        g.data['canonicals_by_name'][name] = g.data['canonicals'][id_]
+        g.canonicals[id_] = {'id': id_, 'names': [name], 'name': name}
+        g.canonicals_by_name[name] = id_
+    else:
+        id_ = g.canonicals_by_name[name]
 
-    return jsonify(g.data['canonicals_by_name'][name])
+    return jsonify(g.canonicals[id_])
 
 @app.route('/canonical/<id>', methods=['GET'])
 def read_canonical(id):
     try:
-        c = g.data['canonicals'][int(id)]
+        c = g.canonicals[int(id)]
     except KeyError:
         abort(404)
     else:
@@ -79,30 +78,30 @@ def read_canonical(id):
 @app.route('/canonical/<id>', methods=['PUT'])
 def update_canonical(id):
     try:
-        c = g.data['canonicals'][int(id)]
+        c = g.canonicals[int(id)]
     except KeyError:
         abort(404)
 
     for n in c['names']:
-        del g.data['canonicals_by_name'][n]
+        del g.canonicals_by_name[n]
 
     data = request.json
     del data['id']
     c.update(data)
 
     for n in c['names']:
-        g.data['canonicals_by_name'][n] = c
+        g.canonicals_by_name[n] = c['id']
 
     return jsonify(c)
 
 @app.route('/names', methods=['GET'])
 def get_names():
-    return jsonify(g.data['names'])
+    return jsonify(g.names)
 
 @app.route('/names', methods=['PUT'])
 def update_names():
-    g.data['names'] = request.data.splitlines()
-    return jsonify(g.data['names'])
+    g.names = request.data.splitlines()
+    return jsonify(g.names)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
