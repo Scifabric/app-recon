@@ -81,7 +81,7 @@ PyBossa.Recon = {
     if (s1 == s2) {
       return 0;
     }
- 
+
     var s1_len = s1.length;
     var s2_len = s2.length;
     if (s1_len === 0) { return s2_len; }
@@ -221,7 +221,7 @@ PyBossa.Recon = {
     task = data.task;
     $("#question .name").text(task.info.name);
 
-    $.get(PyBossa.Recon.backendUri + '/canonical', {name: task.info.name})
+    $.getJSON(PyBossa.Recon.backendUri + '/canonical', {name: task.info.name})
       .done(function (resp) {
         var $cn = $('.canonical-names');
         canonical = resp;
@@ -230,16 +230,17 @@ PyBossa.Recon = {
           $cn.append('<span class="label label-info">' + this + '</span>&nbsp;');
         });
         $('.canonical-name').text(canonical.name);
-      });
-
-    $.getJSON(PyBossa.Recon.backendUri + '/names')
-      .done(function (resp) {
-        names = resp.map(function (n) {
-          return {name: n, score: levenshtein(n, canonical.name)};
-        });
-        names.sort(function (a, b) { return a.score - b.score });
-        layout.stop().words(getAllowedNames()).start();
       })
+      .done(function () {
+        $.getJSON(PyBossa.Recon.backendUri + '/names')
+          .done(function (resp) {
+            names = resp.map(function (n) {
+              return {name: n, score: levenshtein(n, canonical.name)};
+            });
+            names.sort(function (a, b) { return a.score - b.score });
+            layout.stop().words(getAllowedNames()).start();
+          })
+      });
   }
 
   // Saves the answer for the given task
