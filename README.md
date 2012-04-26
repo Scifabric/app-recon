@@ -13,6 +13,11 @@ First you'll need to setup and run PyBossa. See the [PyBossa documentation](http
     pip install -r requirements.txt
     PORT=5001 python backend.py
 
+You'll also need to symlink or copy the two d3 libraries into PyBossa's `static/js` folder. For example, if you have the `pybossa` and `app-recon` repositories checked out side by side:
+
+    ln -s $(pwd)/d3.v2.min.js ../pybossa/pybossa/static/js
+    ln -s $(pwd)/d3.layout.cloud.js ../pybossa/pybossa/static/js
+
 How to load data
 ----------------
 
